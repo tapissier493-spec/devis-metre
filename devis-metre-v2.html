@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devis mètré – V2</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #2c3e50;
+            --bg: #f8f9fa;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg);
+            color: var(--primary);
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .container { grid-template-columns: 1fr; }
+        }
+        .panel {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+        h2, h3 { margin-top: 0; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .form-group { margin-bottom: 12px; }
+        label { display: block; margin-bottom: 4px; font-weight: bold; font-size: 13px; }
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 8px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+        }
+        .grid-2col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+        .btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 10px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary { background-color: #7f8c8d; }
+        .btn-danger { background-color: #e74c3c; width: auto; padding: 5px 10px; }
+        
+        /* Ajustement de la grille pour intégrer N° et QTÉ au début */
+        .piece-header {
+            display: grid;
+            grid-template-columns: 35px 50px 2fr 1fr 1fr auto;
+            gap: 5px;
+            font-weight: bold;
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            align-items: center;
+        }
+
+        .piece-row {
+            display: grid;
+            grid-template-columns: 35px 50px 2fr 1fr 1fr auto;
+            gap: 5px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .piece-num {
+            font-weight: bold;
+            text-align: center;
+            font-size: 13px;
+        }
+        .results {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .result-box {
+            background: #f1f2f6;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .result-box span { display: block; font-size: 24px; font-weight: bold; color: var(--primary); }
+        #canvas-container {
+            width: 100%;
+            max-height: 76vh;
+            overflow: auto;
+            background: #fff;
+            border: 1px solid #ddd;
+            padding: 14px;
+            box-sizing: border-box;
+        }
+
+        #layout-columns {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-start;
+            justify-content: center;
+            gap: 18px;
+        }
+
+        .layout-column {
+            flex: 0 0 auto;
+            background: #fff;
+        }
+
+        .layout-column-title {
+            text-align: center;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        .layout-column canvas {
+            display: block;
+            background: #ffffff;
+            width: 320px;
+            height: auto;
+            max-width: none;
+            margin: 0 auto;
+            cursor: grab;
+            border: 1px solid #ddd;
+        }
+
+        .layout-column canvas:active {
+            cursor: grabbing;
+        }
+
+        /* Styles pour l'impression / Fiche récapitulative */
+        .print-only { display: none; }
+        
+        @media print {
+            body {
+                background-color: white;
+                color: black;
+                padding: 0;
+            }
+            .no-print { display: none !important; }
+            .print-only { display: block !important; }
+            .container { display: block; }
+            .panel { box-shadow: none; padding: 0; }
+            
+            #canvas-container { 
+                border: none; 
+                padding: 0; 
+                text-align: left;
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            canvas { 
+                border: 1px solid #000; 
+                max-width: 50% !important; 
+                height: auto !important;
+                cursor: default;
+            }
+            
+            .print-header {
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+            .print-header h1 {
+                margin: 0;
+                font-size: 22px;
+            }
+
+            table.print-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+                margin-bottom: 20px;
+                page-break-inside: auto;
+            }
+            table.print-table tr {
+                page-break-inside: avoid;
+                break-inside: avoid;
+            }
+            table.print-table th, table.print-table td {
+                border: 1px solid #333;
+                padding: 6px 10px;
+                text-align: left;
+                font-size: 12px;
+            }
+            table.print-table th { background-color: #f2f2f2; }
+            
+            .divers-col {
+                min-width: 100px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- EN-TÊTE D'IMPRESSION -->
+<div class="print-only print-header">
+    <h1>Fiche de Coupe & Imbrication</h1>
+    <p style="margin:5px 0 0 0; font-size:12px;" id="print-date"></p>
+</div>
+
+<h1 class="no-print">✂️ Devis mètré</h1>
+
+<div class="container">
+    <!-- PANNEAU DE SAISIE (GAUCHE) -->
+    <div class="no-print">
+        <div class="panel">
+            <h2>Chantier & Tissu</h2>
+            <div class="form-group">
+                <label for="client-name">Nom du client / Chantier</label>
+                <input type="text" id="client-name" placeholder="Ex: Dupont - Fauteuil Crapaud">
+            </div>
+            <div class="form-group">
+                <label for="fabric-ref">Référence du tissu</label>
+                <input type="text" id="fabric-ref" placeholder="Ex: Velours Bleu Réf. 402">
+            </div>
+            <div class="form-group">
+                <label for="laize">Largeur du tissu (Laize en cm)</label>
+                <input type="number" id="laize" value="140" min="50" max="300">
+            </div>
+            
+            <!-- CADRE RACCORD -->
+            <div class="form-group" style="background: #f1f2f6; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+                <label style="color: #2c3e50; margin-bottom: 8px;">🎯 Raccord de motif (optionnel)</label>
+                <div class="grid-2col">
+                    <div>
+                        <label for="raccord-w" style="font-weight: normal; font-size: 11px;">Largeur raccord (cm)</label>
+                        <input type="number" id="raccord-w" value="0" min="0" step="0.5" placeholder="0 = Sans">
+                    </div>
+                    <div>
+                        <label for="raccord-h" style="font-weight: normal; font-size: 11px;">Hauteur raccord (cm)</label>
+                        <input type="number" id="raccord-h" value="0" min="0" step="0.5" placeholder="0 = Sans">
+                    </div>
+                </div>
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="global-rot" checked>
+                <label for="global-rot" style="font-weight: normal; margin-bottom: 0;">Autoriser la rotation à 90° pour toutes les pièces</label>
+            </div>
+            
+            <h3 style="margin-top: 20px;">Pièces à découper</h3><span style="font-size:10px;color:#999;margin-left:8px;">V2</span>
+            <div class="piece-header">
+                <span>N°</span>
+                <span>Qté</span>
+                <span>Nom</span>
+                <span>Larg (cm)</span>
+                <span>Haut (cm)</span>
+                <span></span>
+            </div>
+            <div id="pieces-list">
+                <!-- Rempli dynamiquement -->
+            </div>
+            <button type="button" id="add-piece-btn" class="btn btn-secondary">+ Ajouter une pièce</button>
+            <button type="button" id="calculate-btn" class="btn">Calculer le plan de coupe</button>
+            <button type="button" id="print-btn" class="btn" style="background-color: #27ae60;">🖨️ Imprimer la fiche de coupe</button>
+            <div id="app-status" role="status" aria-live="polite" style="margin-top:10px;font-size:12px;color:#555;"></div>
+        </div>
+    </div>
+
+    <!-- PANNEAU D'AFFICHAGE DES RÉSULTATS (DROITE) -->
+    <div class="panel">
+        <h2 class="no-print">Plan de Coupe & Résultats</h2>
+        <p class="no-print" style="font-size:12px; color: #555; margin-top: -10px;">
+            ⚡ <em>Plusieurs dispositions sont testées pour rechercher le métrage minimal. Le plan est présenté en plusieurs colonnes si nécessaire pour rester lisible. Métrage arrondi aux 10 cm supérieurs.</em>
+        </p>
+        
+        <div class="results">
+            <div class="result-box">
+                Métrage requis
+                <span id="res-metrage">0.00 m</span>
+            </div>
+            <div class="result-box">
+                Taux d'utilisation
+                <span id="res-optimisation">0 %</span>
+            </div>
+        </div>
+
+        <div class="print-only">
+            <h3>Détails du chantier</h3>
+            <p id="print-config-info" style="font-size:13px; line-height: 1.5;"></p>
+            <h3>Récapitulatif des séries de pièces</h3>
+            <table class="print-table">
+                <thead>
+                    <tr>
+                        <th>N° Pièce</th>
+                        <th>Nom de la pièce</th>
+                        <th>Quantité</th>
+                        <th>Dim. finies (L x H)</th>
+                        <th class="divers-col">Divers</th>
+                    </tr>
+                </thead>
+                <tbody id="print-table-body">
+                </tbody>
+            </table>
+            <h3>Plan de coupe visuel</h3>
+        </div>
+        
+        <div id="canvas-container">
+            <div id="layout-columns"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const initialPieces = [
+        { name: "Assise 1", w: 65, h: 60, q: 2 },
+        { name: "Dossier 1", w: 55, h: 70, q: 2 },
+        { name: "Manchette", w: 25, h: 45, q: 4 }
+    ];
+
+    let currentPackedPieces = [];
+    let currentLaize = 140;
+    let currentRaccordW = 0;
+    let currentRaccordH = 0;
+    let currentScale = 1;
+
+    // Variables Drag & Drop
+    let isDragging = false;
+    let selectedPiece = null;
+    let dragOffsetX = 0;
+    let dragOffsetY = 0;
+    let dragCanvas = null;
+
+    // Gestionnaire de clic DÉLÉGUÉ : il fonctionne même si le CMS
+    // réorganise ou recrée les boutons après le chargement de la page.
+    document.addEventListener('click', function (event) {
+        const addBtn = event.target.closest && event.target.closest('#add-piece-btn');
+        if (addBtn) {
+            event.preventDefault();
+            addPieceRow('Nouvelle pièce', 50, 50, 1);
+            setStatus('Pièce ajoutée.');
+            return;
+        }
+
+        const calcBtn = event.target.closest && event.target.closest('#calculate-btn');
+        if (calcBtn) {
+            event.preventDefault();
+            calculateLayout();
+            return;
+        }
+
+        const printBtn = event.target.closest && event.target.closest('#print-btn');
+        if (printBtn) {
+            event.preventDefault();
+            printPlan();
+        }
+    }, false);
+
+    function init() {
+        initialPieces.forEach(p => addPieceRow(p.name, p.w, p.h, p.q));
+        calculateLayout();
+        setStatus('Version V2 chargée.');
+    }
+
+    function setStatus(message, isError = false) {
+        const el = document.getElementById('app-status');
+        if (!el) return;
+        el.textContent = message || '';
+        el.style.color = isError ? '#c0392b' : '#555';
+        el.style.fontWeight = isError ? 'bold' : 'normal';
+    }
+
+    function updateRowNumbers() {
+        const rows = document.querySelectorAll('.piece-row');
+        rows.forEach((row, index) => {
+            const numSpan = row.querySelector('.piece-num');
+            if (numSpan) {
+                numSpan.innerText = index + 1;
+            }
+        });
+    }
+
+    function addPieceRow(name = 'Nouvelle pièce', w = 50, h = 50, q = 1) {
+        const container = document.getElementById('pieces-list');
+        const row = document.createElement('div');
+        row.className = 'piece-row';
+
+        const num = document.createElement('span');
+        num.className = 'piece-num';
+
+        const qty = document.createElement('input');
+        qty.type = 'number';
+        qty.className = 'p-q';
+        qty.value = q;
+        qty.min = '1';
+        qty.step = '1';
+        qty.placeholder = 'Qté';
+        qty.title = 'Quantité';
+
+        const nameInput = document.createElement('input');
+        nameInput.type = 'text';
+        nameInput.className = 'p-name';
+        nameInput.value = name;
+        nameInput.placeholder = 'Nom';
+
+        const width = document.createElement('input');
+        width.type = 'number';
+        width.className = 'p-w';
+        width.value = w;
+        width.min = '0.1';
+        width.step = '0.1';
+        width.placeholder = 'L';
+        width.title = 'Largeur (cm)';
+
+        const height = document.createElement('input');
+        height.type = 'number';
+        height.className = 'p-h';
+        height.value = h;
+        height.min = '0.1';
+        height.step = '0.1';
+        height.placeholder = 'H';
+        height.title = 'Hauteur (cm)';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'btn btn-danger';
+        removeBtn.textContent = 'X';
+        removeBtn.title = 'Supprimer cette pièce';
+        removeBtn.addEventListener('click', () => {
+            row.remove();
+            updateRowNumbers();
+            calculateLayout();
+        });
+
+        row.append(num, qty, nameInput, width, height, removeBtn);
+        container.appendChild(row);
+        updateRowNumbers();
+    }
+
+    // ALGORITHME D'OPTIMISATION MULTI-DISPOSITIONS
+    // Teste plusieurs ordres de placement et conserve celui donnant
+    // la plus petite longueur totale de tissu.
+    function calculateLayout() {
+        currentLaize = parseFloat(document.getElementById('laize').value);
+        currentRaccordW = parseFloat(document.getElementById('raccord-w').value) || 0;
+        currentRaccordH = parseFloat(document.getElementById('raccord-h').value) || 0;
+
+        const allowGlobalRot = document.getElementById('global-rot').checked;
+        const client = document.getElementById('client-name').value.trim();
+        const fabricRef = document.getElementById('fabric-ref').value.trim();
+
+        setStatus('');
+
+        if (!Number.isFinite(currentLaize) || currentLaize <= 0) {
+            setStatus('La largeur du tissu doit être supérieure à 0 cm.', true);
+            currentPackedPieces = [];
+            refreshDisplay();
+            return;
+        }
+
+        if (currentRaccordW < 0 || currentRaccordH < 0 || !Number.isFinite(currentRaccordW) || !Number.isFinite(currentRaccordH)) {
+            setStatus('Les dimensions du raccord doivent être positives.', true);
+            currentPackedPieces = [];
+            refreshDisplay();
+            return;
+        }
+
+        if (currentRaccordW > currentLaize) {
+            setStatus(`Le raccord en largeur (${currentRaccordW} cm) ne peut pas être supérieur à la laize (${currentLaize} cm).`, true);
+            currentPackedPieces = [];
+            refreshDisplay();
+            return;
+        }
+
+        const rows = document.querySelectorAll('.piece-row');
+        let piecesInput = [];
+        let summarySeries = [];
+        let pieceGroupNum = 1;
+
+        for (const row of rows) {
+            const name = row.querySelector('.p-name').value.trim() || "Pièce";
+            const origW = parseFloat(row.querySelector('.p-w').value);
+            const origH = parseFloat(row.querySelector('.p-h').value);
+            const q = Math.max(1, parseInt(row.querySelector('.p-q').value, 10) || 1);
+
+            if (!Number.isFinite(origW) || !Number.isFinite(origH) || origW <= 0 || origH <= 0) {
+                setStatus(`Dimensions invalides pour « ${name} ».`, true);
+                currentPackedPieces = [];
+                refreshDisplay();
+                return;
+            }
+
+            if (!allowGlobalRot && origW > currentLaize && origH > currentLaize) {
+                setStatus(`La pièce « ${name} » (${origW} × ${origH} cm) ne peut pas tenir dans une laize de ${currentLaize} cm sans rotation.`, true);
+                currentPackedPieces = [];
+                refreshDisplay();
+                return;
+            }
+
+            if (allowGlobalRot && origW > currentLaize && origH > currentLaize) {
+                setStatus(`La pièce « ${name} » (${origW} × ${origH} cm) est trop large pour une laize de ${currentLaize} cm, même tournée à 90°.`, true);
+                currentPackedPieces = [];
+                refreshDisplay();
+                return;
+            }
+
+            const groupID = pieceGroupNum++;
+
+            summarySeries.push({
+                groupNumber: `${groupID}`,
+                name: name,
+                quantity: q,
+                origW: origW,
+                origH: origH
+            });
+
+            for (let i = 0; i < q; i++) {
+                piecesInput.push({
+                    id: groupID,
+                    name: name,
+                    w: origW,
+                    h: origH,
+                    origW: origW,
+                    origH: origH,
+                    allowRot: allowGlobalRot,
+                    uniqueIndex: piecesInput.length
+                });
+            }
+        }
+
+        if (!piecesInput.length) {
+            currentPackedPieces = [];
+            updatePrintTable(summarySeries, currentLaize, client, fabricRef);
+            refreshDisplay();
+            return;
+        }
+
+        // Recherche multi-dispositions.
+        // On teste plusieurs stratégies d'ordre :
+        // 1. grande dimension décroissante
+        // 2. surface décroissante
+        // 3. hauteur décroissante
+        // 4. largeur décroissante
+        // 5. largeur décroissante puis hauteur
+        // 6. ordre inversé
+        const strategies = [
+            (a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h),
+            (a, b) => (b.w * b.h) - (a.w * a.h),
+            (a, b) => b.h - a.h || b.w - a.w,
+            (a, b) => b.w - a.w || b.h - a.h,
+            (a, b) => (b.w + b.h) - (a.w + a.h),
+            (a, b) => Math.max(b.w, b.h) - Math.max(a.w, a.h) || (b.w * b.h) - (a.w * a.h)
+        ];
+
+        let bestLayout = null;
+        let bestHeight = Infinity;
+        let bestScore = Infinity;
+
+        strategies.forEach((strategy, strategyIndex) => {
+            let ordered = piecesInput.map(p => ({...p}));
+
+            ordered.sort((a, b) => {
+                const result = strategy(a, b);
+                if (result !== 0) return result;
+                return a.uniqueIndex - b.uniqueIndex;
+            });
+
+            // Une seconde passe avec l'ordre inverse permet d'explorer
+            // une disposition différente sans explosion du temps de calcul.
+            const ordersToTest = [ordered];
+
+            if (strategyIndex < 5) {
+                ordersToTest.push([...ordered].reverse());
+            }
+
+            ordersToTest.forEach(order => {
+                const layout = packPiecesGreedy(order, currentLaize, currentRaccordW, currentRaccordH);
+
+                if (!layout) return;
+
+                const height = getLayoutHeight(layout);
+
+                // En cas de même hauteur, on préfère le plan ayant
+                // le moins de zones de contact perdues.
+                const score = getLayoutWasteScore(layout, currentLaize);
+
+                if (height < bestHeight || (height === bestHeight && score < bestScore)) {
+                    bestHeight = height;
+                    bestScore = score;
+                    bestLayout = layout;
+                }
+            });
+        });
+
+        // Tentative supplémentaire : petits groupes de pièces réordonnés
+        // pour les cas où les stratégies principales arrivent à la même hauteur.
+        if (bestLayout) {
+            const areaOrder = piecesInput
+                .map(p => ({...p}))
+                .sort((a, b) => (b.w * b.h) - (a.w * a.h));
+
+            for (let shift = 1; shift < Math.min(areaOrder.length, 8); shift++) {
+                const rotatedOrder = [];
+                for (let i = 0; i < areaOrder.length; i++) {
+                    rotatedOrder.push(areaOrder[(i + shift) % areaOrder.length]);
+                }
+
+                const layout = packPiecesGreedy(
+                    rotatedOrder,
+                    currentLaize,
+                    currentRaccordW,
+                    currentRaccordH
+                );
+
+                if (!layout) continue;
+
+                const height = getLayoutHeight(layout);
+                const score = getLayoutWasteScore(layout, currentLaize);
+
+                if (height < bestHeight || (height === bestHeight && score < bestScore)) {
+                    bestHeight = height;
+                    bestScore = score;
+                    bestLayout = layout;
+                }
+            }
+        }
+
+        if (!bestLayout) {
+            currentPackedPieces = [];
+            updatePrintTable(summarySeries, currentLaize, client, fabricRef);
+            refreshDisplay();
+            setStatus('Impossible de placer toutes les pièces dans la laize indiquée avec les contraintes actuelles.', true);
+            return;
+        }
+
+        currentPackedPieces = bestLayout;
+
+        updatePrintTable(summarySeries, currentLaize, client, fabricRef);
+        refreshDisplay();
+    }
+
+    function packPiecesGreedy(pieces, laize, raccordW, raccordH) {
+        const placedPieces = [];
+
+        for (const sourcePiece of pieces) {
+            const p = {...sourcePiece};
+
+            const bestPos = findMinHeightPosition(
+                p,
+                placedPieces,
+                laize,
+                raccordW,
+                raccordH
+            );
+
+            if (!bestPos) {
+                return null;
+            }
+
+            p.x = bestPos.x;
+            p.y = bestPos.y;
+            p.finalW = bestPos.w;
+            p.finalH = bestPos.h;
+            p.rotated = bestPos.rotated;
+
+            placedPieces.push(p);
+        }
+
+        return placedPieces;
+    }
+
+    function getLayoutHeight(layout) {
+        let maxY = 0;
+        layout.forEach(p => {
+            maxY = Math.max(maxY, p.y + p.finalH);
+        });
+        return maxY;
+    }
+
+    function getLayoutWasteScore(layout, laize) {
+        // Critère secondaire : favoriser une disposition compacte
+        // horizontalement, afin d'éviter des poches de tissu inutilisées.
+        let score = 0;
+
+        layout.forEach(p => {
+            score += (laize - (p.x + p.finalW));
+        });
+
+        return score;
+    }
+
+    function findMinHeightPosition(piece, placedPieces, laize, raccordW, raccordH) {
+        let bestPoint = null;
+        let minTopY = Infinity;
+        let bestContact = -1;
+        let minX = Infinity;
+
+        let orientations = [{ w: piece.w, h: piece.h, rot: false }];
+
+        if (piece.allowRot && piece.w !== piece.h) {
+            orientations.push({ w: piece.h, h: piece.w, rot: true });
+        }
+
+        // On conserve les positions issues des bords des pièces déjà placées.
+        // Elles servent lorsque le raccord n'est pas actif sur l'axe concerné.
+        const edgeX = [0];
+        const edgeY = [0];
+        let placedMaxY = 0;
+
+        placedPieces.forEach(p => {
+            edgeX.push(p.x, p.x + p.finalW);
+            edgeY.push(p.y, p.y + p.finalH);
+            placedMaxY = Math.max(placedMaxY, p.y + p.finalH);
+        });
+
+        const uniqueSorted = arr => [...new Set(arr.map(v => Number(v.toFixed(4))))]
+            .filter(v => Number.isFinite(v))
+            .sort((a, b) => a - b);
+
+        for (const o of orientations) {
+            const xCandidates = [];
+            const yCandidates = [];
+
+            // AXE X : si un raccord de largeur est renseigné, le CENTRE
+            // de la pièce doit être exactement sur une ligne de raccord.
+            if (raccordW > 0) {
+                // Toutes les lignes de raccord susceptibles d'accueillir le centre.
+                // k = 0 est autorisé : si le centre est sur 0, la pièce dépasserait
+                // de la laize et sera donc simplement rejetée plus bas.
+                const minK = Math.ceil((o.w / 2) / raccordW - 1e-9);
+                const maxK = Math.floor((laize - o.w / 2) / raccordW + 1e-9);
+                for (let k = minK; k <= maxK; k++) {
+                    xCandidates.push(k * raccordW - o.w / 2);
+                }
+            } else {
+                xCandidates.push(...edgeX);
+            }
+
+            // AXE Y : même logique pour la hauteur du raccord.
+            if (raccordH > 0) {
+                // On génère assez de lignes pour couvrir toute la zone déjà
+                // occupée, plus la hauteur de la pièce à placer.
+                const maxCentreY = placedMaxY + o.h;
+                const maxK = Math.floor(maxCentreY / raccordH + 1);
+                for (let k = 0; k <= maxK; k++) {
+                    yCandidates.push(k * raccordH - o.h / 2);
+                }
+            } else {
+                yCandidates.push(...edgeY);
+            }
+
+            // Ajouter aussi les positions correspondant aux bords des pièces
+            // sur l'autre axe permet de conserver une bonne imbrication.
+            const xs = uniqueSorted(xCandidates);
+            const ys = uniqueSorted(yCandidates);
+
+            for (const startY of ys) {
+                for (const startX of xs) {
+                    const actualW = o.w;
+                    const actualH = o.h;
+
+                    if (startX < -0.001 || startY < -0.001) continue;
+                    if (startX + actualW > laize + 0.001) continue;
+
+                    const rect = {
+                        x: Math.max(0, startX),
+                        y: Math.max(0, startY),
+                        finalW: actualW,
+                        finalH: actualH
+                    };
+
+                    // Vérification stricte de l'alignement du centre.
+                    // Cela évite toute approximation visuelle du raccord.
+                    if (raccordW > 0) {
+                        const centreX = rect.x + actualW / 2;
+                        const moduloX = Math.abs(centreX / raccordW - Math.round(centreX / raccordW));
+                        if (moduloX > 0.0001) continue;
+                    }
+                    if (raccordH > 0) {
+                        const centreY = rect.y + actualH / 2;
+                        const moduloY = Math.abs(centreY / raccordH - Math.round(centreY / raccordH));
+                        if (moduloY > 0.0001) continue;
+                    }
+
+                    if (checkOverlap(rect, placedPieces)) continue;
+
+                    const topY = rect.y + actualH;
+
+                    // Contact direct avec le bord du tissu.
+                    let contact = 0;
+                    if (Math.abs(rect.x) < 0.001) contact++;
+                    if (Math.abs(rect.y) < 0.001) contact++;
+
+                    // Contact direct avec les autres pièces.
+                    for (const other of placedPieces) {
+                        const verticalOverlap =
+                            rect.y < other.y + other.finalH &&
+                            rect.y + actualH > other.y;
+
+                        const horizontalOverlap =
+                            rect.x < other.x + other.finalW &&
+                            rect.x + actualW > other.x;
+
+                        const touchLeft = Math.abs((rect.x + actualW) - other.x) < 0.001;
+                        const touchRight = Math.abs(rect.x - (other.x + other.finalW)) < 0.001;
+                        const touchTop = Math.abs((rect.y + actualH) - other.y) < 0.001;
+                        const touchBottom = Math.abs(rect.y - (other.y + other.finalH)) < 0.001;
+
+                        if ((touchLeft || touchRight) && verticalOverlap) contact++;
+                        if ((touchTop || touchBottom) && horizontalOverlap) contact++;
+                    }
+
+                    if (
+                        bestPoint === null ||
+                        topY < minTopY ||
+                        (Math.abs(topY - minTopY) < 0.001 && contact > bestContact) ||
+                        (Math.abs(topY - minTopY) < 0.001 &&
+                         contact === bestContact &&
+                         rect.x < minX)
+                    ) {
+                        minTopY = topY;
+                        minX = rect.x;
+                        bestContact = contact;
+
+                        bestPoint = {
+                            x: rect.x,
+                            y: rect.y,
+                            w: actualW,
+                            h: actualH,
+                            rotated: o.rot
+                        };
+                    }
+                }
+            }
+        }
+
+        return bestPoint;
+    }
+
+    function checkOverlap(rect, pieces) {
+        for (let p of pieces) {
+            if (rect.x < p.x + p.finalW &&
+                rect.x + rect.finalW > p.x &&
+                rect.y < p.y + p.finalH &&
+                rect.y + rect.finalH > p.y) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function refreshDisplay() {
+        let maxY = 0;
+        let areaPieces = 0;
+
+        currentPackedPieces.forEach(p => {
+            let bottomY = p.y + p.finalH;
+            if (bottomY > maxY) maxY = bottomY;
+            areaPieces += (p.origW * p.origH);
+        });
+
+        const exactLengthCm = maxY;
+        
+        // ARRONDI À LA DIZAINE SUPÉRIEURE (ex: 212 cm -> 220 cm)
+        const roundedLengthCm = Math.ceil(exactLengthCm / 10) * 10;
+        
+        document.getElementById('res-metrage').innerText = (roundedLengthCm / 100).toFixed(2) + " m";
+        
+        let totalAreaUsed = currentLaize * roundedLengthCm;
+        let optimPct = totalAreaUsed > 0 ? Math.round((areaPieces / totalAreaUsed) * 100) : 0;
+        document.getElementById('res-optimisation').innerText = optimPct + " %";
+
+        drawLayout(currentPackedPieces, currentLaize, roundedLengthCm);
+    }
+
+    function updatePrintTable(seriesList, laize, client, fabricRef) {
+        let clientStr = client ? `<strong>Client / Chantier :</strong> ${client}<br>` : '';
+        let refStr = fabricRef ? `<strong>Réf. Tissu :</strong> ${fabricRef}<br>` : '';
+        let raccordStr = (currentRaccordW > 0 || currentRaccordH > 0) 
+            ? ` | <strong>Raccord :</strong> ${currentRaccordW || '-'} x ${currentRaccordH || '-'} cm` 
+            : '';
+        
+        let maxY = 0;
+        currentPackedPieces.forEach(p => {
+            if (p.y + p.finalH > maxY) maxY = p.y + p.finalH;
+        });
+        
+        const roundedLengthCm = Math.ceil(maxY / 10) * 10;
+
+        document.getElementById('print-config-info').innerHTML = `
+            ${clientStr}
+            ${refStr}
+            <strong>Laize tissu :</strong> ${laize} cm${raccordStr} | <strong>Métrage total :</strong> ${(roundedLengthCm/100).toFixed(2)} m
+        `;
+        
+        const tbody = document.getElementById('print-table-body');
+        tbody.innerHTML = '';
+        
+        seriesList.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${s.groupNumber}</strong></td>
+                <td>${s.name}</td>
+                <td>${s.quantity}</td>
+                <td>${s.origW} x ${s.origH} cm</td>
+                <td></td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Création d'un motif de hachures pour les zones vides
+    function createHatchPattern() {
+        const pCanvas = document.createElement('canvas');
+        pCanvas.width = 16;
+        pCanvas.height = 16;
+        const pCtx = pCanvas.getContext('2d');
+
+        pCtx.strokeStyle = "rgba(120, 120, 120, 0.35)";
+        pCtx.lineWidth = 1.2;
+        pCtx.beginPath();
+        pCtx.moveTo(0, 16);
+        pCtx.lineTo(16, 0);
+        pCtx.moveTo(-4, 4);
+        pCtx.lineTo(4, -4);
+        pCtx.moveTo(12, 20);
+        pCtx.lineTo(20, 12);
+        pCtx.stroke();
+
+        return pCanvas;
+    }
+
+    // AFFICHAGE MULTI-COLONNES
+    // La présentation est divisée en colonnes, mais une pièce n'est JAMAIS
+    // coupée visuellement entre deux colonnes. Les limites sont déplacées
+    // jusqu'à la fin d'une pièce lorsqu'une pièce chevauche la limite prévue.
+    function drawLayout(pieces, laize, totalLength) {
+        const container = document.getElementById('layout-columns');
+        container.innerHTML = '';
+
+        const columnWidthPx = 320;
+        const maxColumnHeightPx = 620;
+        const totalCm = Math.max(totalLength, 50);
+
+        const targetCmPerColumn = Math.max(
+            180,
+            Math.min(300, maxColumnHeightPx / (columnWidthPx / laize))
+        );
+
+        // Détermine des limites de colonnes qui ne traversent jamais une pièce.
+        const boundaries = [0];
+        let currentY = 0;
+        let safety = 0;
+
+        while (currentY < totalCm && safety++ < 1000) {
+            let proposedEnd = Math.min(totalCm, currentY + targetCmPerColumn);
+            let adjustedEnd = proposedEnd;
+
+            // Si une pièce traverse la limite prévue, on repousse la limite
+            // jusqu'à son bord inférieur. On recommence car plusieurs pièces
+            // peuvent se suivre sans espace suffisant entre elles.
+            let changed = true;
+            while (changed) {
+                changed = false;
+                for (const p of pieces) {
+                    const pTop = p.y;
+                    const pBottom = p.y + p.finalH;
+                    if (pTop < adjustedEnd && pBottom > adjustedEnd) {
+                        if (pBottom > adjustedEnd) {
+                            adjustedEnd = Math.min(totalCm, pBottom);
+                            changed = true;
+                        }
+                    }
+                }
+            }
+
+            // Sécurité : si une pièce est elle-même plus longue que la
+            // longueur cible, la colonne devient simplement plus longue.
+            if (adjustedEnd <= currentY) adjustedEnd = Math.min(totalCm, currentY + targetCmPerColumn);
+
+            boundaries.push(adjustedEnd);
+            currentY = adjustedEnd;
+        }
+
+        const columnCount = boundaries.length - 1;
+
+        // Chaque colonne garde sa propre longueur : on ne suppose donc plus
+        // que toutes les colonnes ont exactement la même hauteur.
+
+        for (let col = 0; col < columnCount; col++) {
+            const startY = boundaries[col];
+            const endY = boundaries[col + 1];
+            const segmentLength = endY - startY;
+
+            const column = document.createElement('div');
+            column.className = 'layout-column';
+
+            const title = document.createElement('div');
+            title.className = 'layout-column-title';
+            title.innerText =
+                `COLONNE ${col + 1} / ${columnCount} — ${Math.round(startY)} à ${Math.round(endY)} cm`;
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'cut-column-canvas';
+            canvas.dataset.startY = startY;
+            canvas.dataset.endY = endY;
+            canvas.dataset.columnNumber = col + 1;
+
+            const scale = columnWidthPx / laize;
+            canvas.width = Math.round(laize * scale);
+            canvas.height = Math.round(segmentLength * scale);
+
+            const ctx = canvas.getContext('2d');
+
+            const hatchCanvas = createHatchPattern();
+            ctx.fillStyle = ctx.createPattern(hatchCanvas, 'repeat');
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Repères de raccord.
+            if (currentRaccordH > 0 || currentRaccordW > 0) {
+                ctx.strokeStyle = "rgba(41, 128, 185, 0.3)";
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 1;
+
+                if (currentRaccordH > 0) {
+                    for (let y = Math.ceil(startY / currentRaccordH) * currentRaccordH;
+                         y < endY; y += currentRaccordH) {
+                        const localY = (y - startY) * scale;
+                        ctx.beginPath();
+                        ctx.moveTo(0, localY);
+                        ctx.lineTo(canvas.width, localY);
+                        ctx.stroke();
+                    }
+                }
+
+                if (currentRaccordW > 0) {
+                    for (let x = currentRaccordW; x < laize; x += currentRaccordW) {
+                        ctx.beginPath();
+                        ctx.moveTo(x * scale, 0);
+                        ctx.lineTo(x * scale, canvas.height);
+                        ctx.stroke();
+                    }
+                }
+                ctx.setLineDash([]);
+            }
+
+            ctx.strokeStyle = "#000000";
+            ctx.lineWidth = 1.5;
+            ctx.strokeRect(0, 0, canvas.width, canvas.height);
+
+            // Une pièce appartient entièrement à UNE seule colonne.
+            // On ne dessine que les pièces dont le haut est dans cette colonne.
+            pieces.forEach(p => {
+                const pTop = p.y;
+                const pBottom = p.y + p.finalH;
+
+                if (pTop < startY || pTop >= endY) return;
+
+                const pieceX = p.x * scale;
+                const pieceY = (pTop - startY) * scale;
+                const pieceW = p.finalW * scale;
+                const pieceH = p.finalH * scale;
+
+                ctx.fillStyle = "#ffffff";
+                ctx.fillRect(pieceX, pieceY, pieceW, pieceH);
+
+                ctx.strokeStyle = "#000000";
+                ctx.lineWidth = 1;
+                ctx.strokeRect(pieceX, pieceY, pieceW, pieceH);
+
+                if (pieceW > 25 && pieceH > 25) {
+                    const centerX = pieceX + pieceW / 2;
+                    const centerY = pieceY + pieceH / 2;
+                    const minDim = Math.min(pieceW, pieceH);
+                    const fontSize = Math.min(20, Math.max(11, minDim * 0.35));
+
+                    ctx.fillStyle = "#000000";
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textAlign = "center";
+                    ctx.textBaseline = "middle";
+                    ctx.fillText(`${p.id}`, centerX, centerY - fontSize * 0.5);
+
+                    ctx.font = `${Math.max(8, fontSize - 5)}px Arial`;
+                    let displayName = p.name;
+                    if (ctx.measureText(displayName).width > pieceW - 4) {
+                        displayName = displayName.substring(0, 5) + '.';
+                    }
+                    ctx.fillText(displayName, centerX, centerY + fontSize * 0.6);
+                }
+            });
+
+            ctx.fillStyle = "#555";
+            ctx.font = "10px Arial";
+            ctx.textAlign = "left";
+            ctx.textBaseline = "top";
+            ctx.fillText(`${Math.round(startY)} cm`, 5, 4);
+            ctx.textBaseline = "bottom";
+            ctx.fillText(`${Math.round(endY)} cm`, 5, canvas.height - 4);
+
+            canvas.addEventListener('mousedown', onMouseDown);
+            column.appendChild(title);
+            column.appendChild(canvas);
+            container.appendChild(column);
+        }
+    }
+
+    // DÉPLACEMENT SOURIS
+    function getCanvasCoordinates(e, canvas = e.currentTarget) {
+        const rect = canvas.getBoundingClientRect();
+
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
+        const canvasX = (e.clientX - rect.left) * scaleX;
+        const canvasY = (e.clientY - rect.top) * scaleY;
+
+        const startY = parseFloat(canvas.dataset.startY || '0');
+
+        const scale = canvas.width / currentLaize;
+
+        return {
+            x: canvasX / scale,
+            y: startY + canvasY / scale
+        };
+    }
+
+    function onMouseDown(e) {
+        const pos = getCanvasCoordinates(e);
+        
+        for (let i = currentPackedPieces.length - 1; i >= 0; i--) {
+            const p = currentPackedPieces[i];
+            if (pos.x >= p.x && pos.x <= p.x + p.finalW &&
+                pos.y >= p.y && pos.y <= p.y + p.finalH) {
+                
+                isDragging = true;
+                selectedPiece = p;
+                dragCanvas = e.currentTarget;
+                dragOffsetX = pos.x - p.x;
+                dragOffsetY = pos.y - p.y;
+                e.preventDefault();
+                break;
+            }
+        }
+    }
+
+    function onMouseMove(e) {
+        if (!isDragging || !selectedPiece) return;
+
+        const pos = getCanvasCoordinates(e, dragCanvas);
+        
+        let newX = pos.x - dragOffsetX;
+        let newY = pos.y - dragOffsetY;
+
+        if (newX < 0) newX = 0;
+        if (newX + selectedPiece.finalW > currentLaize) {
+            newX = currentLaize - selectedPiece.finalW;
+        }
+        if (newY < 0) newY = 0;
+
+        selectedPiece.x = newX;
+        selectedPiece.y = newY;
+
+        refreshDisplay();
+
+        // Le rendu recrée les canvas : on récupère donc le canvas correspondant
+        // à la nouvelle position de la pièce pour le prochain mouvement.
+        const canvases = document.querySelectorAll('.cut-column-canvas');
+        dragCanvas = null;
+        canvases.forEach(canvas => {
+            const startY = parseFloat(canvas.dataset.startY || '0');
+            const endY = parseFloat(canvas.dataset.endY || '0');
+            if (selectedPiece && selectedPiece.y >= startY - 0.001 && selectedPiece.y < endY + 0.001) {
+                dragCanvas = canvas;
+            }
+        });
+    }
+
+    function onMouseUp() {
+        if (isDragging) {
+            isDragging = false;
+            selectedPiece = null;
+            dragCanvas = null;
+            refreshDisplay();
+        }
+    }
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+
+    function printPlan() {
+        document.getElementById('print-date').innerText = "Généré le " + new Date().toLocaleDateString('fr-FR') + " à " + new Date().toLocaleTimeString('fr-FR');
+        window.print();
+    }
+
+    window.addEventListener('resize', () => {
+        if (currentPackedPieces.length) {
+            refreshDisplay();
+        }
+    });
+
+    window.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
